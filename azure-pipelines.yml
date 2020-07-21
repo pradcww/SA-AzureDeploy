@@ -12,8 +12,7 @@ stages:
       - job: 'validateandtest'
         pool:
           vmimage: windows-latest
-        steps:
-- task: AzureResourceManagerTemplateDeployment@3
+        steps:- task: AzureResourceManagerTemplateDeployment@3
   inputs:
     deploymentScope: 'Resource Group'
     azureResourceManagerConnection: 'SP-CWW-DevSub-Test'
