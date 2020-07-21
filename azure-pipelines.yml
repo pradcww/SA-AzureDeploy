@@ -1,0 +1,53 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- "*"
+
+stages:
+  - stage: test
+    jobs:
+      - job: 'validateandtest'
+        pool:
+          vmimage: windows-latest
+        steps:
+- task: AzureResourceManagerTemplateDeployment@3
+  inputs:
+    deploymentScope: 'Resource Group'
+    azureResourceManagerConnection: 'SP-CWW-DevSub-Test'
+    subscriptionId: '97a313c1-9e66-449d-9939-2c8dabdd5685'
+    action: 'Create Or Update Resource Group'
+    resourceGroupName: 'RG-Test-Pipeline'
+    location: 'Australia Southeast'
+    templateLocation: 'Linked artifact'
+    csmFile: '$(Build.SourcesDirectory)/StorageAccount/azuredeploy.json'
+    csmParametersFile: '$(Build.SourcesDirectory)/StorageAccount/azuredeploy.parameters.json'
+    deploymentMode: 'Validation'
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: 'Install-Module Az.Resources -RequiredVersion 1.12.1-preview -AllowPrerelease -Force -Scope CurrentUser'
+        - task: AzurePowerShell@5
+          inputs:
+            azureSubscription: 'SP-CWW-DevSub-Test'
+            ScriptType: 'InlineScript'
+            Inline: |
+              $Parameters = @{
+                ResourcegroupName     = "RG-Test-Pipeline"
+                Templatefile          = ".\StorageAccount\azuredeploy.json"
+                TemplateParameterfile = ".\StorageAccount\azuredeploy.parameters.json"
+                Mode                  = 'Incremental'
+               }
+              $Result = Get-AzResourceGroupDeploymentWhatIfResult @Parameters
+              $Result
+            azurePowerShellVersion: 'LatestVersion'
+- task: AzurePowerShell@5
+  inputs:
+    azureSubscription: 'SP-CWW-DevSub-Test'
+    ScriptType: 'FilePath'
+    ScriptPath: '$(Build.SourcesDirectory)/Tests/CheckForDeletion.ps1'
+    ScriptArguments: '-ResourceGroup RG-Test-Pipeline'
+    FailOnStandardError: true
+    azurePowerShellVersion: 'LatestVersion'
